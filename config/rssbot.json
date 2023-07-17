@@ -1,0 +1,21 @@
+{
+  "database": {
+    "driver": "postgres",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "username": "rssbot",
+    "password": "change-me",
+    "database": "rssbot"
+  },
+  "bot": {
+    "token": "telegram bot token",
+    "update_timeout": 60,
+    "command_workers_pool_size": 5,
+    "sender_workers_pool_size": 20,
+    "debug": false
+  },
+  "parser": {
+    "workers_pool_size": 20,
+    "feed_update_frequency": 600
+  }
+}

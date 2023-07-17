@@ -1,0 +1,13 @@
+version: '3.7'
+
+services:
+  rssbot:
+    image: golang:1.20.6-alpine
+    build: ./
+    command: ./rssbot
+    restart: always
+    container_name: rssbot
+    volumes:
+      - ./config:/config
+    environment:
+      RSSBOT_CONFIG: "/config/rssbot.json"
