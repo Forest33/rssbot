@@ -12,7 +12,7 @@ GRANT ALL ON DATABASE rssbot TO rssbot;
 ```
 
 ```
-git clone https://github.com/forest33/rssbot
+git clone https://github.com/Forest33/rssbot.git
 cd rssbot
 ```
 
