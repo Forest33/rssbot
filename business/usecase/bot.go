@@ -267,20 +267,11 @@ func (uc *BotUseCase) sendItems(job *itemsJob) error {
 		return err
 	}
 
-	userIds := structs.Map(subs, func(s *entity.Subscription) int64 { return s.UserID })
-
-	users, err := uc.usersRepo.Get(uc.ctx, &entity.UsersFilter{ID: userIds})
-	if err != nil {
-		uc.log.Error().Err(err).Str("feed_id", job.feed.ID).Msg("failed to get feed users")
-		return err
-	}
-
-	chatIdsMap := structs.SliceToMapOfStruct(users, func(u *entity.User) int64 { return u.ChatID })
 	messages := uc.prepareMessages(job.items)
 
-	for chatID, _ := range chatIdsMap {
+	for _, s := range subs {
 		uc.senderChan <- &senderJob{
-			chatID:   chatID,
+			chatID:   s.UserID,
 			messages: messages,
 		}
 	}

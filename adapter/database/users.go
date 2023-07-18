@@ -19,7 +19,7 @@ import (
 
 const (
 	usersTable       = "users"
-	usersTableFields = "id, chat_id, first_name, last_name, username, is_bot, language, created_at, updated_at"
+	usersTableFields = "id, first_name, last_name, username, language, created_at, updated_at"
 )
 
 // UsersRepository object capable of interacting with UsersRepository
@@ -38,11 +38,9 @@ func NewUsersRepository(db *database.Database, log *logger.Zerolog) *UsersReposi
 
 type userDTO struct {
 	ID        int64        `db:"id"`
-	ChatID    int64        `db:"chat_id"`
 	FirstName string       `db:"first_name"`
 	LastName  string       `db:"last_name"`
 	UserName  string       `db:"username"`
-	IsBot     bool         `db:"is_bot"`
 	Language  string       `db:"language"`
 	CreatedAt time.Time    `db:"created_at"`
 	UpdatedAt sql.NullTime `db:"updated_at"`
@@ -51,11 +49,9 @@ type userDTO struct {
 func newUserDTO(in *entity.User) (dto *userDTO, err error) {
 	dto = &userDTO{
 		ID:        in.ID,
-		ChatID:    in.ChatID,
 		FirstName: in.FirstName,
 		LastName:  in.LastName,
 		UserName:  in.UserName,
-		IsBot:     in.IsBot,
 		Language:  in.Language,
 	}
 	return
@@ -64,11 +60,9 @@ func newUserDTO(in *entity.User) (dto *userDTO, err error) {
 func (dto *userDTO) entity() *entity.User {
 	return &entity.User{
 		ID:        dto.ID,
-		ChatID:    dto.ChatID,
 		FirstName: dto.FirstName,
 		LastName:  dto.LastName,
 		UserName:  dto.UserName,
-		IsBot:     dto.IsBot,
 		Language:  dto.Language,
 		CreatedAt: dto.CreatedAt,
 		UpdatedAt: types.SQLToRefTime(dto.UpdatedAt),
@@ -150,15 +144,13 @@ func (repo *UsersRepository) Create(ctx context.Context, in *entity.User) (*enti
 	conn := repo.db.GetConnection(ctx)
 
 	query, args, err = conn.BindNamed(fmt.Sprintf(`
-			INSERT INTO %s (id, chat_id, first_name, last_name, username, is_bot, language)
-			VALUES (:id, :chat_id, :first_name, :last_name, :username, :is_bot, :language)
+			INSERT INTO %s (id, first_name, last_name, username, language)
+			VALUES (:id, :first_name, :last_name, :username, :language)
 			ON CONFLICT (id) DO UPDATE SET
 				updated_at 	= NOW(),
-			    chat_id		= :chat_id,
 			    first_name 	= :first_name,
 			    last_name 	= :last_name,
 			    username 	= :username,
-			    is_bot 		= :is_bot,
 			    language 	= :language
 			RETURNING %s;`, usersTable, usersTableFields), dto)
 	if err != nil {
