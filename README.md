@@ -1,6 +1,7 @@
 # rssbot
 
 Telegram bot that allows you to receive news from RSS channels.
+You can use an existing bot - [t.me/forest33_rss_bot](https://t.me/forest33_rss_bot) or deploy your own.
 
 ### Installation
 
