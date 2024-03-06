@@ -110,7 +110,7 @@ func (uc *ParserUseCase) findFeedURL(ctx context.Context, url string) (string, e
 		return feedURL, nil
 	}
 
-	return "", nil
+	return "", entity.ErrNoFeed
 }
 
 func (uc *ParserUseCase) loadURL(ctx context.Context, url string) (io.ReadCloser, error) {
@@ -176,7 +176,7 @@ func (uc *ParserUseCase) worker() {
 		case <-uc.ctx.Done():
 			return
 		case job := <-uc.workersChan:
-			l := uc.log.Debug().Str("id", job.feed.ID).Str("site_url", job.feed.FeedURL)
+			l := uc.log.Debug().Str("id", job.feed.ID).Str("feed_url", job.feed.FeedURL)
 			err := uc.jobProcess(job, fp)
 			if err != nil {
 				l.Err(err).Msg("processing job error")
@@ -188,19 +188,29 @@ func (uc *ParserUseCase) worker() {
 }
 
 func (uc *ParserUseCase) jobProcess(job *feedJob, fp *gofeed.Parser) error {
+	if job.feed.ErrorCount >= uc.cfg.FeedMaxErrors {
+		uc.log.Error().
+			Str("id", job.feed.ID).
+			Str("feed_url", job.feed.FeedURL).
+			Msg("maximum number of processing errors exceeded")
+		return nil
+	}
+
 	updFeed := &entity.Feed{
-		ID:        job.feed.ID,
-		UpdatedAt: structs.Ref(time.Now().UTC()),
+		ID:         job.feed.ID,
+		ErrorCount: job.feed.ErrorCount,
 	}
 
 	feed, parseErr := fp.ParseURL(job.feed.FeedURL)
 	if parseErr != nil {
 		updFeed.ErrorCount++
+		botUseCase.Send(updFeed, nil)
+		return parseErr
 	} else {
 		updFeed.Title = feed.Title
 	}
 
-	items := make([]*entity.FeedItem, 0, len(feed.Items))
+	items := make([]*entity.RSSFeedItem, 0, len(feed.Items))
 	var lastItemHash string
 
 	for _, item := range feed.Items {
@@ -209,7 +219,7 @@ func (uc *ParserUseCase) jobProcess(job *feedJob, fp *gofeed.Parser) error {
 			break
 		}
 
-		items = append(items, &entity.FeedItem{
+		items = append(items, &entity.RSSFeedItem{
 			GUID:        item.GUID,
 			Title:       item.Title,
 			Description: item.Description,
@@ -217,6 +227,7 @@ func (uc *ParserUseCase) jobProcess(job *feedJob, fp *gofeed.Parser) error {
 			Link:        item.Link,
 			Updated:     item.Updated,
 			Published:   item.Published,
+			Hash:        hash,
 		})
 
 		if len(lastItemHash) == 0 {
@@ -224,6 +235,7 @@ func (uc *ParserUseCase) jobProcess(job *feedJob, fp *gofeed.Parser) error {
 		}
 	}
 
+	updFeed.UpdatedAt = structs.Ref(time.Now().UTC())
 	updFeed.LastItemHash = lastItemHash
 	botUseCase.Send(updFeed, items)
 

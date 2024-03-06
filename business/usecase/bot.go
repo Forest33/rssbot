@@ -21,6 +21,7 @@ type BotUseCase struct {
 	log               *logger.Zerolog
 	db                *database.Database
 	feedsRepo         FeedsRepo
+	itemsRepo         FeedItemsRepo
 	usersRepo         UsersRepo
 	subscriptionsRepo SubscriptionsRepo
 	bot               *tgbotapi.BotAPI
@@ -56,11 +57,12 @@ type senderJob struct {
 
 type itemsJob struct {
 	feed  *entity.Feed
-	items []*entity.FeedItem
+	items []*entity.RSSFeedItem
 }
 
 // NewBotUseCase creates a new BotUseCase
-func NewBotUseCase(ctx context.Context, cfg *entity.BotConfig, log *logger.Zerolog, db *database.Database, feedsRepo FeedsRepo, usersRepo UsersRepo, subscriptionsRepo SubscriptionsRepo) (*BotUseCase, error) {
+func NewBotUseCase(ctx context.Context, cfg *entity.BotConfig, log *logger.Zerolog, db *database.Database, feedsRepo FeedsRepo,
+	itemsRepo FeedItemsRepo, usersRepo UsersRepo, subscriptionsRepo SubscriptionsRepo) (*BotUseCase, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -71,6 +73,7 @@ func NewBotUseCase(ctx context.Context, cfg *entity.BotConfig, log *logger.Zerol
 		log:               log,
 		db:                db,
 		feedsRepo:         feedsRepo,
+		itemsRepo:         itemsRepo,
 		usersRepo:         usersRepo,
 		subscriptionsRepo: subscriptionsRepo,
 		commandChan:       make(chan *commandJob, cfg.CommandWorkersPoolSize),
@@ -85,7 +88,7 @@ func (uc *BotUseCase) Start() {
 	go uc.loop()
 }
 
-func (uc *BotUseCase) Send(feed *entity.Feed, items []*entity.FeedItem) {
+func (uc *BotUseCase) Send(feed *entity.Feed, items []*entity.RSSFeedItem) {
 	uc.itemsChan <- &itemsJob{
 		feed:  feed,
 		items: items,
@@ -185,6 +188,28 @@ func (uc *BotUseCase) itemsWorker() {
 			if !ok {
 				return
 			}
+			if job.items == nil {
+				if _, err := uc.feedsRepo.Update(uc.ctx, job.feed); err != nil {
+					uc.log.Error().Err(err).Str("feed_id", job.feed.ID).Msg("failed to mark feed")
+				}
+				continue
+			}
+
+			items := make([]*entity.RSSFeedItem, 0, len(job.items))
+			for i := range job.items {
+				fi, err := uc.itemsRepo.Create(uc.ctx, &entity.FeedItem{
+					FeedID:   job.feed.ID,
+					ItemHash: job.items[i].Hash,
+				})
+				if err != nil {
+					uc.log.Error().Err(err).Msg("failed to create feed item")
+					continue
+				} else if fi != nil {
+					items = append(items, job.items[i])
+				}
+			}
+			job.items = items
+
 			if err := uc.sendItems(job); err == nil {
 				if _, err := uc.feedsRepo.Update(uc.ctx, job.feed); err != nil {
 					uc.log.Error().Err(err).Str("feed_id", job.feed.ID).Msg("failed to mark feed")
@@ -261,6 +286,10 @@ func (uc *BotUseCase) commandHandler(msg *tgbotapi.Message) error {
 }
 
 func (uc *BotUseCase) sendItems(job *itemsJob) error {
+	if job.items == nil || len(job.items) == 0 {
+		return entity.ErrNoFeedItems
+	}
+
 	subs, err := uc.subscriptionsRepo.GetByFeedID(uc.ctx, job.feed.ID)
 	if err != nil {
 		uc.log.Error().Err(err).Str("feed_id", job.feed.ID).Msg("failed to get feed subscriptions")
@@ -279,7 +308,7 @@ func (uc *BotUseCase) sendItems(job *itemsJob) error {
 	return nil
 }
 
-func (uc *BotUseCase) prepareMessages(items []*entity.FeedItem) []string {
+func (uc *BotUseCase) prepareMessages(items []*entity.RSSFeedItem) []string {
 	messages := make([]string, len(items))
 	for i := len(items) - 1; i >= 0; i-- {
 		msg := fmt.Sprintf("<b><a href=\"%s\">%s</a></b>\n%s", items[i].Link, items[i].Title, uc.sanitizer.Sanitize(items[i].Description))

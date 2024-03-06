@@ -25,6 +25,10 @@ var (
 	ErrLoadURL = errors.New("failed to load URL")
 	// ErrInternal internal error
 	ErrInternal = errors.New("internal error")
+	// ErrNoFeedItems no feed items received
+	ErrNoFeedItems = errors.New("no feed items received")
+	// ErrNoFeed the site does not contain RSS feed
+	ErrNoFeed = errors.New("the site does not contain RSS feed")
 )
 
 func GetErrorMessage(err error) string {
@@ -37,6 +41,8 @@ func GetErrorMessage(err error) string {
 		return MessageWrongSubscriptionNumber
 	case ErrWrongURL:
 		return MessageWrongURL
+	case ErrNoFeed:
+		return MessageNoFeed
 	case ErrLoadURL:
 		return MessageErrorLoadURL
 	case ErrInternal:

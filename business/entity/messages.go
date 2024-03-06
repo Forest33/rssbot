@@ -14,6 +14,7 @@ const (
 	MessageSubscriptionAlreadyExists = `You are already subscribed to this channel`
 	MessageWrongSubscriptionNumber   = `You do not have a subscription with this number`
 	MessageWrongURL                  = `Incorrect website url`
+	MessageNoFeed                    = `The site does not contain RSS feed`
 	MessageErrorLoadURL              = `Failed to load this website`
 	MessageInternalError             = `Oops! something went wrong, please try again later`
 )

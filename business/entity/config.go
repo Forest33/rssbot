@@ -16,6 +16,7 @@ type Config struct {
 	Runtime  *RuntimeConfig  `json:"runtime"`
 	Bot      *BotConfig      `json:"bot"`
 	Parser   *ParserConfig   `json:"parser"`
+	Cleaner  *CleanerConfig  `json:"cleaner"`
 }
 
 // DatabaseConfig database settings
@@ -58,6 +59,13 @@ type BotConfig struct {
 type ParserConfig struct {
 	WorkersPoolSize     int   `json:"workers_pool_size" default:"5"`
 	FeedUpdateFrequency int64 `json:"feed_update_frequency" default:"600"`
+	FeedMaxErrors       int   `json:"feed_max_errors" default:"30"`
+}
+
+// CleanerConfig cleaner settings
+type CleanerConfig struct {
+	Interval    int `json:"interval" default:"3600"`
+	FeedItemTTL int `json:"feed_item_ttl" default:"30"`
 }
 
 // Validate validation BotConfig
@@ -72,5 +80,12 @@ func (c ParserConfig) Validate() error {
 	return validation.ValidateStruct(&c,
 		validation.Field(&c.WorkersPoolSize, validation.Required, validation.Min(1)),
 		validation.Field(&c.FeedUpdateFrequency, validation.Required, validation.Min(10)),
+	)
+}
+
+// Validate validation CleanerConfig
+func (c CleanerConfig) Validate() error {
+	return validation.ValidateStruct(&c,
+		validation.Field(&c.FeedItemTTL, validation.Required, validation.Min(1)),
 	)
 }

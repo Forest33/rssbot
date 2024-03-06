@@ -16,6 +16,11 @@
   },
   "parser": {
     "workers_pool_size": 20,
-    "feed_update_frequency": 600
+    "feed_update_frequency": 600,
+    "feed_max_errors": 30
+  },
+  "cleaner": {
+    "interval": 3600,
+    "feed_item_ttl": 30
   }
 }

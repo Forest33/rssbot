@@ -15,8 +15,8 @@ func initDatabase() {
 	}
 
 	var err error
-	dbi, err = database.NewConnector(cfg.Database, binDataCfg, zlog)
+	dbi, err = database.NewConnector(cfg.Database, binDataCfg, log)
 	if err != nil {
-		zlog.Fatal(err.Error())
+		log.Fatal(err.Error())
 	}
 }

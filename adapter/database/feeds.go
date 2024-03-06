@@ -126,10 +126,15 @@ func (repo *FeedsRepository) Get(ctx context.Context, filter *entity.FeedFilter)
 		mapper["id"] = filter.ID
 	}
 
+	var where string
+	if len(attrs) > 0 {
+		where = "WHERE " + strings.Join(attrs, ",")
+	}
+
 	query, args, err = sqlx.Named(fmt.Sprintf(`
 			SELECT %s 
 			FROM %s
-			WHERE %s;`, feedsTableFields, feedsTable, strings.Join(attrs, ",")), mapper)
+			%s;`, feedsTableFields, feedsTable, where), mapper)
 	if err != nil {
 		return nil, err
 	}

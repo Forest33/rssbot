@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -21,7 +20,7 @@ func init() {
 	if !ok {
 		ex, err := os.Executable()
 		if err != nil {
-			log.Fatal(err.Error())
+			panic(err.Error())
 		}
 		cfgPath = filepath.Join(filepath.Dir(ex), defaultConfigFile)
 	}

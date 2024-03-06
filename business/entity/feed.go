@@ -17,8 +17,8 @@ type Feed struct {
 	UpdatedAt    *time.Time
 }
 
-// FeedItem is feed item
-type FeedItem struct {
+// RSSFeedItem is feed item
+type RSSFeedItem struct {
 	GUID        string
 	Title       string
 	Description string
@@ -26,9 +26,18 @@ type FeedItem struct {
 	Link        string
 	Updated     string
 	Published   string
+	Hash        string
 }
 
 // FeedFilter is filter for getting feeds
 type FeedFilter struct {
 	ID []string
+}
+
+// FeedItem is feed
+type FeedItem struct {
+	ID        string
+	FeedID    string
+	ItemHash  string
+	CreatedAt time.Time
 }

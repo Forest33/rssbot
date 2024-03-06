@@ -17,38 +17,17 @@ import (
 )
 
 var (
-	zlog    *logger.Zerolog
-	homeDir string
-)
-
-var (
-	// AppName application name
-	AppName string
-	// AppVersion application version
-	AppVersion string
-	// AppURL application homepage
-	AppURL = "https://github.com/forest33/rssbot"
-	// BuiltAt build date
-	BuiltAt string
-)
-
-var (
+	log *logger.Zerolog
 	cfg = &entity.Config{}
 	dbi *database.Database
 
 	feedsRepo         *db.FeedsRepository
+	feedItemsRepo     *db.FeedItemsRepository
 	usersRepo         *db.UsersRepository
 	subscriptionsRepo *db.SubscriptionsRepository
 
-	parserUseCase *usecase.ParserUseCase
-	botUseCase    *usecase.BotUseCase
-
 	ctx    context.Context
 	cancel context.CancelFunc
-)
-
-const (
-	applicationName = "rssbot"
 )
 
 func init() {
@@ -64,7 +43,7 @@ func init() {
 func main() {
 	defer shutdown()
 
-	zlog = logger.NewZerolog(logger.ZeroConfig{
+	log = logger.NewZerolog(logger.ZeroConfig{
 		Level:             cfg.Logger.Level,
 		TimeFieldFormat:   cfg.Logger.TimeFieldFormat,
 		PrettyPrint:       cfg.Logger.PrettyPrint,
@@ -76,11 +55,7 @@ func main() {
 
 	initDatabase()
 	initAdapters()
-	initClients()
 	initUseCases()
-
-	botUseCase.Start()
-	parserUseCase.Start()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -88,25 +63,31 @@ func main() {
 }
 
 func initAdapters() {
-	feedsRepo = db.NewFeedsRepository(dbi, zlog)
-	usersRepo = db.NewUsersRepository(dbi, zlog)
-	subscriptionsRepo = db.NewSubscriptionsRepository(dbi, zlog)
-}
-
-func initClients() {
+	feedsRepo = db.NewFeedsRepository(dbi, log)
+	feedItemsRepo = db.NewFeedItemsRepository(dbi, log)
+	usersRepo = db.NewUsersRepository(dbi, log)
+	subscriptionsRepo = db.NewSubscriptionsRepository(dbi, log)
 }
 
 func initUseCases() {
-	var err error
+	parserUseCase, err := usecase.NewParserUseCase(ctx, cfg.Parser, log, feedsRepo)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	parserUseCase, err = usecase.NewParserUseCase(ctx, cfg.Parser, zlog, feedsRepo)
+	botUseCase, err := usecase.NewBotUseCase(ctx, cfg.Bot, log, dbi, feedsRepo, feedItemsRepo, usersRepo, subscriptionsRepo)
 	if err != nil {
-		zlog.Fatal(err)
+		log.Fatal(err)
 	}
-	botUseCase, err = usecase.NewBotUseCase(ctx, cfg.Bot, zlog, dbi, feedsRepo, usersRepo, subscriptionsRepo)
+
+	cleanerUseCase, err := usecase.NewCleanerUseCase(ctx, cfg.Cleaner, log, feedsRepo, feedItemsRepo)
 	if err != nil {
-		zlog.Fatal(err)
+		log.Fatal(err)
 	}
+
+	botUseCase.Start()
+	parserUseCase.Start()
+	cleanerUseCase.Start()
 
 	usecase.SetParserUseCase(parserUseCase)
 	usecase.SetBotUseCase(botUseCase)
