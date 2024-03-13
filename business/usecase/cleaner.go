@@ -37,11 +37,13 @@ func NewCleanerUseCase(ctx context.Context, cfg *entity.CleanerConfig, log *logg
 func (uc *CleanerUseCase) Start() {
 	ticker := time.NewTicker(time.Second * time.Duration(uc.cfg.Interval))
 	go func() {
-		select {
-		case <-ticker.C:
-			uc.clean()
-		case <-uc.ctx.Done():
-			return
+		for {
+			select {
+			case <-ticker.C:
+				uc.clean()
+			case <-uc.ctx.Done():
+				return
+			}
 		}
 	}()
 }
